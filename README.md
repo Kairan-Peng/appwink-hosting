@@ -15,7 +15,19 @@ submodule instead of copying these files into each repo.
 ```bash
 ./verify-live-nginx.sh
 ./deploy-awink-server.sh
+./bump-consumers.sh
 ```
 
 - `verify-live-nginx.sh`: compare the versioned `awink.server.conf` with the live host config
 - `deploy-awink-server.sh`: back up the live config, install the shared server block, run `nginx -t`, reload, and validate `/app/` plus `/blog/`
+- `bump-consumers.sh`: update the `shared/appwink-hosting` submodule in local sibling repos (`appwink-blog`, `appwink-website`) to the latest shared commit
+
+## Recommended Flow
+
+```bash
+./verify-live-nginx.sh
+./deploy-awink-server.sh
+./bump-consumers.sh
+```
+
+Then commit and push the resulting submodule pointer updates in each consumer repository.
