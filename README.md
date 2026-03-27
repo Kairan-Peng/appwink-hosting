@@ -11,6 +11,7 @@ The application website and blog should consume this repository as a git
 submodule instead of copying these files into each repo.
 
 GitHub Actions runs `make check` on pushes to `main`, pull requests, daily at `03:17 UTC`, and manual dispatch.
+On failure, the workflow opens or updates a GitHub issue and mentions `vars.ALERT_GITHUB_LOGIN`, which GitHub can deliver to that account's email inbox via notification email.
 
 ## Scripts
 

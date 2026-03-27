@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
+    inputs:
+      force_failure:
+        description: Force validate job to fail for alert-path testing
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   validate:
@@ -28,3 +34,141 @@ jobs:
 
       - name: Run repository checks
         run: ./check.sh
+
+      - name: Force failure for alert-path testing
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.force_failure }}
+        run: |
+          echo "Forced failure requested for CI alert-path test." >&2
+          exit 1
+
+  notify_failure:
+    needs: validate
+    if: ${{ always() && needs.validate.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Create or update failure alert issue
+        uses: actions/github-script@v8
+        env:
+          ALERT_GITHUB_LOGIN: ${{ vars.ALERT_GITHUB_LOGIN }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const mention = process.env.ALERT_GITHUB_LOGIN
+              ? `@${process.env.ALERT_GITHUB_LOGIN}`
+              : `@${owner}`;
+            const title = "[CI Alert] appwink-hosting validation failed";
+            const labelName = "ci-failure-alert";
+            const body = [
+              `${mention}`,
+              "",
+              "Shared hosting CI failed.",
+              "",
+              `- Repository: \`${owner}/${repo}\``,
+              `- Event: \`${context.eventName}\``,
+              `- Commit: \`${context.sha}\``,
+              `- Run: ${runUrl}`,
+              "",
+              "This alert is delivered through GitHub notifications and will be emailed to the mentioned account if email notifications are enabled."
+            ].join("\n");
+
+            const labels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100
+            });
+
+            if (!labels.some((label) => label.name === labelName)) {
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: labelName,
+                color: "d73a4a",
+                description: "Alerts for AppWink hosting CI failures"
+              });
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              labels: labelName,
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+              core.notice(`Updated alert issue #${existing.number}`);
+            } else {
+              const issue = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: [labelName]
+              });
+              core.notice(`Created alert issue #${issue.data.number}`);
+            }
+
+  resolve_failure_alert:
+    needs: validate
+    if: ${{ always() && needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Close open failure alert issue
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "[CI Alert] appwink-hosting validation failed";
+            const labelName = "ci-failure-alert";
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              labels: labelName,
+              per_page: 100
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+            if (!existing) {
+              core.notice("No open alert issue to close.");
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: existing.number,
+              body: [
+                "Closing alert because shared hosting CI is passing again.",
+                "",
+                `- Commit: \`${context.sha}\``,
+                `- Run: ${runUrl}`
+              ].join("\n")
+            });
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: existing.number,
+              state: "closed"
+            });
+
+            core.notice(`Closed alert issue #${existing.number}`);
