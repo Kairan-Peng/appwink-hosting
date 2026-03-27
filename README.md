@@ -9,3 +9,13 @@ This repository is the single source of truth for:
 
 The application website and blog should consume this repository as a git
 submodule instead of copying these files into each repo.
+
+## Scripts
+
+```bash
+./verify-live-nginx.sh
+./deploy-awink-server.sh
+```
+
+- `verify-live-nginx.sh`: compare the versioned `awink.server.conf` with the live host config
+- `deploy-awink-server.sh`: back up the live config, install the shared server block, run `nginx -t`, reload, and validate `/app/` plus `/blog/`
