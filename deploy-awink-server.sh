@@ -24,6 +24,7 @@ echo
 
 scp "$LOCAL_CONFIG_PATH" "${DEPLOY_USER}@${SERVER_IP}:${REMOTE_TMP_PATH}"
 
+# shellcheck disable=SC2029
 ssh "${DEPLOY_USER}@${SERVER_IP}" "
 BACKUP_PATH='${REMOTE_CONFIG_PATH}.backup-'$(date +%Y%m%d-%H%M%S) &&
 sudo cp '${REMOTE_CONFIG_PATH}' \"\$BACKUP_PATH\" &&

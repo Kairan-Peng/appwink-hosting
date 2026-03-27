@@ -16,5 +16,6 @@ REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/etc/nginx/sites-available/project1.co
 LOCAL_CONFIG_PATH="${LOCAL_CONFIG_PATH:-$ROOT_DIR/nginx/awink.server.conf}"
 
 diff -uw "$LOCAL_CONFIG_PATH" <(
+  # shellcheck disable=SC2029
   ssh "${DEPLOY_USER}@${SERVER_IP}" "sed -n '1,220p' '${REMOTE_CONFIG_PATH}'"
 )
