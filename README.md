@@ -10,7 +10,7 @@ This repository is the single source of truth for:
 The application website and blog should consume this repository as a git
 submodule instead of copying these files into each repo.
 
-GitHub Actions runs `make check` on pushes to `main`, pull requests, and manual dispatch.
+GitHub Actions runs `make check` on pushes to `main`, pull requests, daily at `03:17 UTC`, and manual dispatch.
 
 ## Scripts
 
